@@ -1,15 +1,15 @@
-const jwt = require('jsonwebtoken');
+// middlewares/auth.js
+const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
-  const auth = req.headers.authorization;
-  if (!auth) return res.status(401).json({ error: 'Token requerido' });
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No autorizado" });
 
   try {
-    const token = auth.split(' ')[1];
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    req.user = payload;          // ahora req.user.id es el ID del usuario
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret");
+    req.user = decoded; // Aquí guardamos { id, rol }
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Token inválido' });
+    res.status(401).json({ error: "Token inválido" });
   }
 };

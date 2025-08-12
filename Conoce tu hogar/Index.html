@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RentHome - Encuentra tu hogar ideal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header id="header">
+        <nav>
+            <div class="logo">
+                <i class="fas fa-home"></i>
+                <span>RentHome</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#inicio">Inicio</a></li>
+                <li><a href="#propiedades">Propiedades</a></li>
+                <li><a href="#servicios">Servicios</a></li>
+                <li><a href="#Comentarios">Comentarios</a></li>
+
+                <li><a href="#contacto">Contacto</a></li>
+            </ul>
+            <button class="btn btn-primary">Iniciar Sesión</button>
+        </nav>
+    </header>
+
+    <section class="hero" id="inicio">
+        <div class="hero-content">
+            <h1>Encuentra tu hogar ideal</h1>
+            <p>Descubre las mejores propiedades en renta en tu ciudad</p>
+            <div class="search-box">
+                <input type="text" placeholder="Buscar por ubicación...">
+                <button class="btn btn-primary">Buscar</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="servicios">
+        <h2 class="section-title">Nuestros Servicios</h2>
+        <p class="section-subtitle">Todo lo que necesitas para encontrar tu hogar ideal </p>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-home"></i>
+                </div>
+                <h3>Renta de propiedad</h3>
+                <p>Propiedades en renta en todas las zonas del municipio</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-map-marked-alt"></i>
+                </div>
+                <h3>Ubicaciones</h3>
+                <p>Las mejores zonas residenciales y comerciales</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+                <h3>Precios Competitivos</h3>
+                <p>Las mejores rentas</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Properties Section -->
+    <section class="properties" id="propiedades">
+        <h2 class="section-title">Propiedades Destacadas</h2>
+        <p class="section-subtitle">Las mejores opciones disponibles</p>
+        
+        <div class="properties-grid">
+            <!-- Las propiedades se cargarán dinámicamente con JavaScript -->
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="comentaries" id="Comentarios">
+        <h2 class="section-title">Lo que dicen nuestros clientes</h2>
+        <p class="section-subtitle">Experiencias reales de personas como tú</p>
+        
+        <div class="Comentaries-grid">
+            <!-- Loscomentarios se cargarán dinámicamente con JavaScript -->
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contacto">
+        <h2 class="section-title">Contáctanos</h2>
+        <p class="section-subtitle">¿Tienes alguna pregunta? Escríbenos</p>
+        
+        <div class="contact-container">
+            <form class="contact-form">
+                <input type="text" placeholder="Nombre" required>
+                <input type="email" placeholder="Email" required>
+                <input type="tel" placeholder="Teléfono">
+                <textarea placeholder="Mensaje" required></textarea>
+                <button type="submit" class="btn btn-primary">Enviar Mensaje</button>
+            </form>
+            
+            <div class="contact-info">
+                <div class="info-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <p>Av. Principal #123, Ciudad</p>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-phone"></i>
+                    <p>+1 234 567 890</p>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-envelope"></i>
+                    <p>info@rentahome.com</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Sobre Nosotros</h3>
+                <p>RentHome es la plataforma líder en renta de propiedades en el municipio.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Enlaces Rápidos</h3>
+                <ul>
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#propiedades">Propiedades</a></li>
+                    <li><a href="#servicios">Servicios</a></li>
+                    <li><a href="#contacto">Contacto</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Redes Sociales</h3>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 RentHome. Todos los derechos reservados.</p>
+
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

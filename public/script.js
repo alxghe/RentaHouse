@@ -1,96 +1,150 @@
-const API = "/api";
+const API = "http://localhost:3000/api";
+const BASE_URL = "http://localhost:3000";
 let token = localStorage.getItem("token") || null;
 
-/* ========== Helpers ========== */
-async function request(path, method = "GET", data = null) {
-  const opts = { method, headers: { "Content-Type": "application/json" } };
-  if (data) opts.body = JSON.stringify(data);
-  if (token) opts.headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API}${path}`, opts);
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${msg}`);
-  }
-  return res.json();
-}
-
-function show(el) { el.classList.remove("hidden"); }
-function hide(el) { el.classList.add("hidden"); }
-
-/* ========== Registro ========== */
-document.getElementById("form-register").addEventListener("submit", async e => {
-  e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target));
-  try {
-    await request("/users/register", "POST", data);
-    alert("Registro exitoso ✔");
-    e.target.reset();
-  } catch (err) { alert("Error: " + err.message); }
-});
-
-/* ========== Login ========== */
+// Primero obtener todas las referencias DOM
 const tokenInfo = document.getElementById("tokenInfo");
-const formProp  = document.getElementById("form-prop");
+const formProp = document.getElementById("form-prop"); // ✅ Ahora está definido
 const btnLogout = document.getElementById("btn-logout");
 
-function onLoginSuccess() {
-  tokenInfo.textContent = "Token activo (guardado en localStorage)";
-  show(tokenInfo); show(formProp); show(btnLogout);
-  cargarPropiedades();
+/* ========== Helpers Mejorados ========== */
+async function request(path, method = "GET", data = null) {
+  const opts = { method, headers: {} };
+
+  if (!(data instanceof FormData)) {
+    opts.headers["Content-Type"] = "application/json";
+    if (data) opts.body = JSON.stringify(data);
+  } else {
+    opts.body = data;
+  }
+
+  if (token) opts.headers.Authorization = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(`${API}${path}`, opts);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || 
+        errorData.error || 
+        `Error ${res.status}: ${res.statusText}`
+      );
+    }
+    return await res.json();
+  } catch (err) {
+    console.error("Error en la petición:", {
+      path,
+      method,
+      error: err.message
+    });
+    throw err;
+  }
 }
 
-if (token) onLoginSuccess(); // token ya persistía
-
-document.getElementById("form-login").addEventListener("submit", async e => {
-  e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target));
-  try {
-    const res = await request("/users/login", "POST", data);
-    token = res.token;
-    localStorage.setItem("token", token);
-    alert("Login correcto ✔");
-    onLoginSuccess();
-    e.target.reset();
-  } catch (err) { alert("Error: " + err.message); }
-});
-
-/* ========== Logout ========== */
-btnLogout.addEventListener("click", () => {
-  token = null;
-  localStorage.removeItem("token");
-  hide(tokenInfo); hide(formProp); hide(btnLogout);
-  alert("Sesión cerrada");
-});
-
-/* ========== Publicar propiedad ========== */
+/* ========== Publicar Propiedad (Versión Mejorada) ========== */
 formProp.addEventListener("submit", async e => {
   e.preventDefault();
-  const data = Object.fromEntries(new FormData(e.target));
-  // backend completará usuario_id, estado_disponibilidad y fecha_publicacion
+  const submitBtn = formProp.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  
   try {
-    await request("/propiedades", "POST", data);
-    alert("Propiedad publicada ✔");
-    e.target.reset();
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Publicando...";
+    
+    // 1. Crear FormData con nombre de campo correcto
+    const formData = new FormData(formProp);
+    console.log("Datos a enviar:", {
+      titulo: formData.get('titulo'),
+      imagenes: formData.getAll('imagenes') // o 'imagen' según tu backend
+    });
+
+    // 2. Hacer la petición con timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    
+    const response = await fetch(`${API}/propiedades`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    // 3. Manejar respuesta
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("Error del servidor:", {
+        status: response.status,
+        data: errorData
+      });
+      throw new Error(errorData.message || `Error ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log("Respuesta exitosa:", result);
+    
+    formProp.reset();
+    document.getElementById('preview-container').innerHTML = '';
     cargarPropiedades();
-  } catch (err) { alert("Error: " + err.message); }
+    alert(`✅ Propiedad publicada con ID: ${result.id}`);
+
+  } catch (err) {
+    console.error("Error completo:", {
+      name: err.name,
+      message: err.message,
+      stack: err.stack
+    });
+    
+    let errorMessage = "Error al publicar propiedad";
+    if (err.name === "AbortError") {
+      errorMessage = "La petición tardó demasiado (más de 15 segundos)";
+    } else if (err.message.includes("500")) {
+      errorMessage = "Error interno del servidor (revisa la consola del servidor)";
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    
+    alert(`❌ ${errorMessage}`);
+    
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+  }
 });
 
-/* ========== Listar propiedades ========== */
+/* ========== Cargar Propiedades (Versión Mejorada) ========== */
 async function cargarPropiedades() {
+  const cont = document.getElementById("props");
+  cont.innerHTML = "<p>Cargando propiedades...</p>";
+
   try {
     const lista = await request("/propiedades");
-    const cont = document.getElementById("props");
     cont.innerHTML = "";
+    
+    if (lista.length === 0) {
+      cont.innerHTML = "<p>No hay propiedades disponibles</p>";
+      return;
+    }
+
     lista.forEach(p => {
-      cont.insertAdjacentHTML(
-        "beforeend",
-        `<div class="card">
-           <h3>${p.titulo}</h3>
-           <p><strong>$${p.precio}</strong> — ${p.tipo}</p>
-           <p>${p.descripcion || ""}</p>
-         </div>`
-      );
+      const imagesHTML = p.imagen_url 
+        ? `<img src="${BASE_URL}${p.imagen_url}" alt="${p.titulo}" class="property-img">`
+        : "";
+      
+      cont.insertAdjacentHTML("beforeend", `
+        <div class="card">
+          <h3>${p.titulo}</h3>
+          <p><strong>$${p.precio?.toLocaleString() || '0'}</strong> — ${p.tipo || 'Sin tipo'}</p>
+          ${imagesHTML}
+          <p>${p.descripcion || ""}</p>
+          <small>${new Date(p.fecha_publicacion).toLocaleDateString()}</small>
+        </div>
+      `);
     });
-  } catch (err) { console.error(err); }
+  } catch (err) {
+    console.error("Error al cargar propiedades:", err);
+    cont.innerHTML = `<p class="error">Error al cargar propiedades: ${err.message}</p>`;
+  }
 }
-cargarPropiedades();

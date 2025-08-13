@@ -19,12 +19,14 @@ exports.getResenasByPropiedad = async (req, res) => {
 // Crear una reseña
 exports.addResena = async (req, res) => {
     try {
-        const { propiedad_id, usuario_id, comentario, calificacion } = req.body;
+        // usuario_id ahora viene del token validado
+        const usuario_id = req.user.id;
+        const { propiedad_id, comentario, calificacion } = req.body;
         
-        if (!usuario_id || !propiedad_id) {
+        if (!usuario_id || !propiedad_id || !comentario || calificacion == null) {
             return res.status(400).json({ error: 'Datos incompletos' });
         }
-        
+
         await db('resenas').insert({ 
             propiedad_id, 
             usuario_id, 
@@ -39,6 +41,7 @@ exports.addResena = async (req, res) => {
         res.status(500).json({ error: 'Error al añadir reseña' });
     }
 };
+
 
 // Añade este método que falta
 exports.deleteResena = async (req, res) => {

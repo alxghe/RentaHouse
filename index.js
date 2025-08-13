@@ -5,6 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
+const favoritosRoutes = require('./routes/favoritos');
+const resenasRoutes = require('./routes/resenas.js');
+const mensajesRoutes = require('./routes/mensajes');
 
 // 1. Configuración inicial
 app.use(cors());
@@ -12,6 +15,11 @@ app.use(cors());
 // 2. Middleware para parsear JSON y form-data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Integracion de funciones
+app.use('/api/favoritos', favoritosRoutes);
+app.use('/api/resenas', resenasRoutes);
+app.use('/api/mensajes', mensajesRoutes);
 
 // 3. Configuración avanzada de la carpeta uploads
 const uploadsDir = path.join(__dirname, 'uploads');

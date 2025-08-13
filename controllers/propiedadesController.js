@@ -53,7 +53,7 @@ exports.crear = async (req, res) => {
   console.log("Inicio de creación de propiedad - Archivos recibidos:", req.files);
   
   try {
-    // Validación básica
+    // Validación mínima de imagen
     if (!req.files || req.files.length === 0) {
       console.warn("No se recibieron archivos");
       return res.status(400).json({ 
@@ -62,7 +62,20 @@ exports.crear = async (req, res) => {
       });
     }
 
-    console.log("Procesando imágenes...");
+    // ==== NUEVO: leer lat/lng y validar ====
+    const rawLat = req.body.lat;
+    const rawLng = req.body.lng;
+    const lat = rawLat != null ? parseFloat(rawLat) : null;
+    const lng = rawLng != null ? parseFloat(rawLng) : null;
+
+    if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({ error: "Debe indicar lat y lng" });
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ error: "Coordenadas fuera de rango" });
+    }
+    // =======================================
+
     const imagenUrls = req.files.map(file => `/uploads/${file.filename}`);
 
     // Datos de la propiedad principal
@@ -71,29 +84,27 @@ exports.crear = async (req, res) => {
       usuario_id: req.user.id,
       estado_disponibilidad: 'disponible',
       fecha_publicacion: new Date().toISOString(),
-      imagen_url: imagenUrls[0] // Primera imagen como principal
+      imagen_url: imagenUrls[0],
+      lat,            // <==== guardar coords
+      lng             // <====
+      // opcional: direccion_texto: req.body.direccion_texto || null
     };
 
-    // Iniciar transacción para asegurar integridad
     const trx = await db.transaction();
-
     try {
       console.log("Insertando propiedad principal...");
       const [propiedadId] = await trx('propiedades').insert(propiedadData);
 
-      // Insertar imágenes adicionales en propiedad_imagenes
       if (imagenUrls.length > 1) {
         console.log("Insertando imágenes adicionales...");
         const imagenesAdicionales = imagenUrls.slice(1).map((url, index) => ({
           propiedad_id: propiedadId,
           url,
-          orden: index + 1 // Comenzar desde 1 (0 sería la imagen principal)
+          orden: index + 1
         }));
-
         await trx('propiedad_imagenes').insert(imagenesAdicionales);
       }
 
-      // Commit de la transacción
       await trx.commit();
 
       console.log("Propiedad creada exitosamente con ID:", propiedadId);
@@ -105,7 +116,6 @@ exports.crear = async (req, res) => {
       });
 
     } catch (err) {
-      // Rollback en caso de error
       await trx.rollback();
       throw err;
     }
@@ -118,7 +128,6 @@ exports.crear = async (req, res) => {
       files: req.files
     });
     
-    // Eliminar archivos subidos si hay error
     if (req.files) {
       req.files.forEach(file => {
         const filePath = path.join(__dirname, '../uploads', file.filename);
@@ -139,31 +148,44 @@ exports.actualizar = async (req, res) => {
   const trx = await db.transaction();
   
   try {
-    // Actualizar datos principales
+    // ==== NUEVO: si llegan lat/lng, validarlos y normalizarlos a float ====
+    const patch = { ...req.body };
+    if (patch.lat != null) {
+      const lat = parseFloat(patch.lat);
+      if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+        return res.status(400).json({ error: 'lat inválida' });
+      }
+      patch.lat = lat;
+    }
+    if (patch.lng != null) {
+      const lng = parseFloat(patch.lng);
+      if (Number.isNaN(lng) || lng < -180 || lng > 180) {
+        return res.status(400).json({ error: 'lng inválida' });
+      }
+      patch.lng = lng;
+    }
+    // ======================================================================
+
     await trx('propiedades')
       .where({ id: req.params.id })
-      .update(req.body);
+      .update(patch);
 
-    // Si se enviaron nuevas imágenes
+    // Imágenes (igual que tenías)
     if (req.files && req.files.length > 0) {
       const imagenUrls = req.files.map(file => `/uploads/${file.filename}`);
 
-      // Actualizar imagen principal si es la primera
       if (req.body.actualizar_imagen_principal) {
         await trx('propiedades')
           .where({ id: req.params.id })
           .update({ imagen_url: imagenUrls[0] });
       }
 
-      // Obtener el conteo actual de imágenes para esta propiedad
       const countResult = await trx('propiedad_imagenes')
         .where({ propiedad_id: req.params.id })
         .count('* as count')
         .first();
-      
       const currentCount = parseInt(countResult.count);
 
-      // Agregar imágenes adicionales
       const nuevasImagenes = imagenUrls.map((url, index) => ({
         propiedad_id: req.params.id,
         url,
@@ -185,6 +207,7 @@ exports.actualizar = async (req, res) => {
     });
   }
 };
+
 
 exports.eliminar = async (req, res) => {
   const trx = await db.transaction();

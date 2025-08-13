@@ -60,6 +60,44 @@ function getUserId() {
     return null;
   }
 }
+// ====== CONFIG MAPA ======
+function initMap() {
+  const defaultLat = 20.43108; // CDMX
+  const defaultLng = -101.72261;
+
+  const map = L.map('map').setView([defaultLat, defaultLng], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  const marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+
+  function updateLatLng(lat, lng) {
+    document.getElementById('lat').value = lat;
+    document.getElementById('lng').value = lng;
+  }
+
+  marker.on('dragend', function (e) {
+    const latLng = e.target.getLatLng();
+    updateLatLng(latLng.lat, latLng.lng);
+  });
+
+  map.on('click', function (e) {
+    marker.setLatLng(e.latlng);
+    updateLatLng(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Valores iniciales
+  updateLatLng(defaultLat, defaultLng);
+}
+
+// Inicializar el mapa cuando el DOM esté listo
+document.addEventListener("DOMContentLoaded", function() {
+  if (document.getElementById('map')) {
+    initMap();
+  }
+});
+
 // ====== REGISTRO ======
 const formRegister = document.getElementById("form-register");
 
@@ -135,7 +173,14 @@ formProp.addEventListener("submit", async e => {
   try {
     submitBtn.disabled = true;
     submitBtn.textContent = "Publicando...";
+
+    // Capturamos coordenadas antes de enviar
+    const lat = document.getElementById('lat').value;
+    const lng = document.getElementById('lng').value;
+
     const formData = new FormData(formProp);
+    // No necesitas append si los campos ya están en el FormData
+    // (porque tienen el atributo 'name')
 
     const result = await request("/propiedades", "POST", formData);
     formProp.reset();
@@ -149,6 +194,7 @@ formProp.addEventListener("submit", async e => {
     submitBtn.textContent = originalText;
   }
 });
+
 
 // ====== Cargar Propiedades ======
 async function cargarPropiedades() {

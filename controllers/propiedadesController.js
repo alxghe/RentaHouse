@@ -50,9 +50,13 @@ exports.obtener = async (req, res) => {
 };
 
 exports.crear = async (req, res) => {
+  
   console.log("Inicio de creación de propiedad - Archivos recibidos:", req.files);
   
   try {
+    if (req.user.rol !== 'arrendador') {
+      return res.status(403).json({ error: 'No tienes permiso para publicar propiedades' });
+    }
     // Validación mínima de imagen
     if (!req.files || req.files.length === 0) {
       console.warn("No se recibieron archivos");

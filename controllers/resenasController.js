@@ -19,7 +19,7 @@ exports.getResenasByPropiedad = async (req, res) => {
 // Crear una reseña
 exports.addResena = async (req, res) => {
     try {
-        // usuario_id ahora viene del token validado
+        // usuario_id ahora viene del token ya validado
         const usuario_id = req.user.id;
         const { propiedad_id, comentario, calificacion } = req.body;
         

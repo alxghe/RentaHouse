@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>RentaHouse - Login</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+  <header>
+    <h1>RentaHouse</h1>
+    <nav>...</nav>
+  </header>
+  <main>
+    <h2>Iniciar sesión</h2>
+    <form id="form-login">
+      <label>Email <input name="email" type="email" required></label>
+      <label>Contraseña <input name="password" type="password" required></label>
+      <button>Iniciar sesión</button>
+    </form>
+    <p id="tokenInfo" class="hidden"></p>
+    <button id="btn-logout" class="hidden">Cerrar sesión</button>
+  </main>
+  <script src="../scripts/auth.js"></script>
+</body>
+</html>

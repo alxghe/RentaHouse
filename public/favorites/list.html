@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mis favoritos | RentaHouse</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main>
+    <h2>Mis propiedades favoritas</h2>
+    <div id="favorites-list" class="grid-container"></div>
+  </main>
+
+  <script src="../scripts/utils.js"></script>
+  <script src="../scripts/favorites.js"></script>
+  <script>
+    loadPartial('navbar-container', '../partials/navbar.html');
+    
+    // Cargar favoritos al iniciar
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const favorites = await request('/favoritos');
+        const container = document.getElementById('favorites-list');
+        
+        if (favorites.length === 0) {
+          container.innerHTML = '<p>No tienes propiedades favoritas</p>';
+          return;
+        }
+
+        favorites.forEach(fav => {
+          container.innerHTML += `
+            <div class="card">
+              <h3>${fav.propiedad.titulo}</h3>
+              <p>$${fav.propiedad.precio}</p>
+              <button onclick="removeFavorite(${fav.id})">🗑️ Eliminar</button>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    async function removeFavorite(id) {
+      await request(`/favoritos/${id}`, 'DELETE');
+      window.location.reload();
+    }
+  </script>
+</body>
+</html>

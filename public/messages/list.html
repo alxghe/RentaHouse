@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mensajes | RentaHouse</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .messages-container {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 1rem;
+      height: calc(100vh - 100px);
+    }
+    
+    .messages-sidebar {
+      border-right: 1px solid #eee;
+      padding-right: 1rem;
+      overflow-y: auto;
+    }
+    
+    .conversation-card {
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .conversation-card:hover {
+      background: #f5f6fa;
+    }
+    
+    .conversation-card.active {
+      background: #e1e8ff;
+    }
+    
+    .messages-content {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    
+    #messages-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    
+    .message {
+      max-width: 70%;
+      padding: 0.8rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 1rem;
+      position: relative;
+    }
+    
+    .message.sent {
+      background: #0066ff;
+      color: white;
+      margin-left: auto;
+    }
+    
+    .message.received {
+      background: #f1f2f6;
+      margin-right: auto;
+    }
+    
+    .message small {
+      display: block;
+      font-size: 0.7rem;
+      opacity: 0.8;
+      margin-top: 0.5rem;
+    }
+    
+    #form-message {
+      display: flex;
+      padding: 1rem;
+      border-top: 1px solid #eee;
+    }
+    
+    #form-message textarea {
+      flex: 1;
+      padding: 0.8rem;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      resize: none;
+      min-height: 50px;
+    }
+    
+    #form-message button {
+      margin-left: 1rem;
+      padding: 0 1.5rem;
+      background: #0066ff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+    
+    .no-conversations {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+      font-style: italic;
+    }
+    
+    .error {
+      color: #d32f2f;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .error button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main class="messages-container">
+    <div class="messages-sidebar">
+      <h2>Conversaciones</h2>
+      <div id="conversations-list"></div>
+    </div>
+    
+    <div class="messages-content">
+      <h2 id="conversation-title">Selecciona una conversación</h2>
+      <div id="messages-list"></div>
+      <form id="form-message" class="hidden">
+        <textarea name="contenido" placeholder="Escribe un mensaje..." required></textarea>
+        <button type="submit">Enviar</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="../scripts/utils.js"></script>
+  <script>
+    loadPartial('navbar-container', '../partials/navbar.html');
+    
+    // Obtener ID del usuario actual
+    async function getCurrentUserId() {
+      try {
+        const user = await request('/users/me');
+        return user?.id;
+      } catch (error) {
+        console.error('Error obteniendo usuario:', error);
+        return null;
+      }
+    }
+
+    async function loadConversations() {
+      const container = document.getElementById('conversations-list');
+      container.innerHTML = '<div class="loading">Cargando conversaciones...</div>';
+      
+      try {
+        const conversations = await request('/mensajes/conversaciones');
+        
+        container.innerHTML = '';
+        
+        if (!conversations || conversations.length === 0) {
+          container.innerHTML = '<div class="no-conversations">No tienes conversaciones aún</div>';
+          return;
+        }
+        
+        conversations.forEach(conv => {
+          const convElement = document.createElement('div');
+          convElement.className = 'conversation-card';
+          convElement.dataset.id = conv.usuario.id;
+          
+          const lastMsg = conv.ultimo_mensaje || 'Nuevo chat';
+          const lastDate = conv.fecha_ultimo_mensaje ? 
+            new Date(conv.fecha_ultimo_mensaje).toLocaleString() : '';
+          
+          convElement.innerHTML = `
+            <div class="conversation-info">
+              <h4>${conv.usuario.nombre || 'Usuario desconocido'}</h4>
+              <p class="last-message">${lastMsg.substring(0, 30)}${lastMsg.length > 30 ? '...' : ''}</p>
+              <small>${lastDate}</small>
+            </div>
+          `;
+          
+          convElement.addEventListener('click', () => {
+            document.querySelectorAll('.conversation-card').forEach(c => c.classList.remove('active'));
+            convElement.classList.add('active');
+            loadMessages(conv.usuario.id);
+          });
+          
+          container.appendChild(convElement);
+        });
+      } catch (error) {
+        console.error('Error cargando conversaciones:', error);
+        container.innerHTML = `
+          <div class="error">
+            <p>Error al cargar conversaciones</p>
+            <button onclick="loadConversations()">Reintentar</button>
+          </div>
+        `;
+      }
+    }
+
+    // Cargar mensajes de una conversación
+    async function loadMessages(userId) {
+      try {
+        const currentUserId = await getCurrentUserId();
+        if (!currentUserId) {
+          alert('Debes iniciar sesión para ver mensajes');
+          return;
+        }
+        
+        const container = document.getElementById('messages-list');
+        container.innerHTML = '<p class="loading">Cargando mensajes...</p>';
+        
+        const messages = await request(`/mensajes/${currentUserId}/${userId}`);
+        
+        container.innerHTML = '';
+        document.getElementById('conversation-title').textContent = `Conversación con ${userId}`;
+        
+        if (messages.length === 0) {
+          container.innerHTML = '<p class="no-conversations">No hay mensajes en esta conversación</p>';
+        } else {
+          messages.forEach(msg => {
+            const msgElement = document.createElement('div');
+            msgElement.className = `message ${msg.emisor_id == currentUserId ? 'sent' : 'received'}`;
+            
+            msgElement.innerHTML = `
+              <p>${msg.contenido}</p>
+              <small>${new Date(msg.fecha_envio).toLocaleString()}</small>
+            `;
+            
+            container.appendChild(msgElement);
+          });
+          container.scrollTop = container.scrollHeight;
+        }
+        
+        // Mostrar y configurar formulario de envío
+        const form = document.getElementById('form-message');
+        form.classList.remove('hidden');
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const content = e.target.contenido.value.trim();
+          if (!content) return;
+          
+          try {
+            await request('/mensajes', 'POST', {
+              emisor_id: currentUserId,
+              receptor_id: userId,
+              contenido: content
+            });
+            e.target.contenido.value = '';
+            loadMessages(userId);
+          } catch (error) {
+            console.error('Error enviando mensaje:', error);
+            alert('Error al enviar mensaje');
+          }
+        };
+      } catch (error) {
+        console.error('Error cargando mensajes:', error);
+        document.getElementById('messages-list').innerHTML = 
+          '<p class="error">Error al cargar mensajes</p>';
+      }
+    }
+
+    // Función principal que maneja la carga inicial
+    async function init() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const userId = urlParams.get('user_id');
+      const propertyId = urlParams.get('property_id');
+      
+      try {
+        if (userId) {
+          // Modo conversación directa (desde detail.html)
+          document.querySelector('.messages-sidebar').style.display = 'none';
+          document.querySelector('.messages-content').style.gridColumn = '1 / -1';
+          
+          // Cargar información de la propiedad si está disponible
+          if (propertyId) {
+            try {
+              const property = await request(`/propiedades/${propertyId}`);
+              document.getElementById('conversation-title').textContent = 
+                `Conversación sobre: ${property.titulo}`;
+            } catch (error) {
+              console.error('Error cargando propiedad:', error);
+            }
+          }
+          
+          // Cargar mensajes directamente
+          await loadMessages(userId);
+        } else {
+          // Modo normal (lista de conversaciones)
+          await loadConversations();
+        }
+      } catch (error) {
+        console.error('Error en init:', error);
+      }
+    }
+
+    // Iniciar la aplicación cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

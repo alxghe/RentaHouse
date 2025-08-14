@@ -16,10 +16,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use('/api', require('./routes')); // Esto es opcional, dependiendo de tu estructura
+
+// Ruta específica para mensajes
+app.use('/mensajes', require('./routes/mensajes'));
 // Integracion de funciones
 app.use('/api/favoritos', favoritosRoutes);
 app.use('/api/resenas', resenasRoutes);
 app.use('/api/mensajes', mensajesRoutes);
+
 
 // 3. Configuración avanzada de la carpeta uploads
 const uploadsDir = path.join(__dirname, 'uploads');

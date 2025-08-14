@@ -50,6 +50,8 @@ exports.obtener = async (req, res) => {
 };
 
 exports.crear = async (req, res) => {
+  console.log("Cuerpo de la solicitud:", req.body);
+  console.log("Archivos recibidos:", req.files);
   
   console.log("Inicio de creación de propiedad - Archivos recibidos:", req.files);
   

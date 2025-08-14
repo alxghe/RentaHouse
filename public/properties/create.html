@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Publicar propiedad | RentaHouse</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 400px; margin: 20px 0; border: 1px solid #ddd; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+    button[type="submit"] { background: #0066ff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main class="form-container">
+    <h2>Publicar nueva propiedad</h2>
+    <form id="form-prop" enctype="multipart/form-data">
+      <!-- Campos del formulario -->
+      <div class="form-group">
+        <label for="titulo">Título:</label>
+        <input type="text" id="titulo" name="titulo" required>
+      </div>
+
+      <div class="form-group">
+        <label for="descripcion">Descripción:</label>
+        <textarea id="descripcion" name="descripcion" rows="4" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="tipo">Tipo de propiedad:</label>
+        <select id="tipo" name="tipo" required>
+          <option value="casa">Casa</option>
+          <option value="departamento">Departamento</option>
+          <option value="terreno">Terreno</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="precio">Precio (MXN):</label>
+        <input type="number" id="precio" name="precio" min="0" required>
+      </div>
+
+      <div class="form-group">
+        <label for="direccion">Dirección:</label>
+        <input type="text" id="direccion" name="direccion" required>
+      </div>
+
+      <!-- Cambiar el name del input de archivos a "files" -->
+<div class="form-group">
+  <label for="imagen">Imágenes:</label>
+  <input type="file" id="imagen" name="files" multiple accept="image/*">
+</div>
+
+      <!-- Campos ocultos para coordenadas -->
+      <input type="hidden" id="lat" name="lat" value="19.4326">
+      <input type="hidden" id="lng" name="lng" value="-99.1332">
+
+      <div class="form-group">
+        <label>Ubicación en mapa:</label>
+        <div id="map"></div>
+        <small>Haz clic en el mapa o arrastra el marcador para seleccionar la ubicación exacta</small>
+      </div>
+
+      <button type="submit">Publicar propiedad</button>
+    </form>
+  </main>
+
+  <!-- Carga de bibliotecas primero -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="../scripts/utils.js"></script>
+  <script src="../scripts/propertyUtils.js"></script>
+  <script src="../scripts/navbarLoader.js"></script>
+
+  <!-- Código principal -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // 1. Cargar navbar
+    if (typeof loadNavbar === 'function') {
+      loadNavbar('navbar-container');
+    } else {
+      console.error('loadNavbar no está definido');
+    }
+
+    // 2. Inicializar mapa
+    if (typeof initPropertyMap === 'function') {
+      initPropertyMap();
+    } else {
+      console.error('initPropertyMap no está definido');
+    }
+
+    // 3. Obtener referencia al formulario
+    const form = document.getElementById('form-prop');
+    if (!form) {
+      console.error('No se encontró el formulario con ID "form-prop"');
+      return;
+    }
+
+    // 4. Manejar envío del formulario
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+      
+      // Verificar archivos
+      const filesInput = document.getElementById('imagen');
+      if (filesInput.files.length === 0) {
+        alert('Debes subir al menos una imagen');
+        return;
+      }
+
+      // Añadir cada archivo al FormData
+      for (let i = 0; i < filesInput.files.length; i++) {
+        formData.append('files', filesInput.files[i]);
+      }
+
+      try {
+        const response = await createProperty(formData);
+        alert('Propiedad publicada con éxito! ID: ' + response.id);
+        form.reset();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al publicar propiedad: ' + error.message);
+      }
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Propiedades | RentaHouse</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main>
+    <h2>Propiedades disponibles</h2>
+    
+    <div id="filter-container" class="filters">
+      <div class="filter-group">
+        <label for="type-filter">Tipo de propiedad:</label>
+        <select id="type-filter">
+          <option value="">Todos</option>
+          <option value="casa">Casa</option>
+          <option value="departamento">Departamento</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="price-filter">Rango de precios:</label>
+        <select id="price-filter">
+          <option value="">Todos</option>
+          <option value="0-5000">Menos de $5,000</option>
+          <option value="5000-10000">$5,000 - $10,000</option>
+          <option value="10000-20000">$10,000 - $20,000</option>
+          <option value="20000">Más de $20,000</option>
+        </select>
+      </div>
+    </div>
+    
+    <div id="props" class="grid-container"></div>
+  </main>
+
+  <script src="../scripts/utils.js"></script>
+  <script>
+    // Carga la barra de navegación
+    loadPartial('navbar-container', '../partials/navbar.html');
+    
+    // Función para cargar propiedades
+    async function loadProperties(type = '', priceRange = '') {
+      const propsContainer = document.getElementById('props');
+      propsContainer.innerHTML = '<p class="loading">Cargando propiedades...</p>';
+      
+      try {
+        // Construir parámetros de búsqueda
+        const params = new URLSearchParams();
+        if (type) params.append('type', type);
+        
+        if (priceRange) {
+          const [min, max] = priceRange.split('-');
+          if (min) params.append('minPrice', min);
+          if (max) params.append('maxPrice', max);
+        }
+        
+        // Hacer la petición
+        const propiedades = await request(`/propiedades?${params.toString()}`);
+        
+        // Mostrar resultados
+        propsContainer.innerHTML = '';
+        if (propiedades.length === 0) {
+          propsContainer.innerHTML = '<p class="no-results">No se encontraron propiedades</p>';
+          return;
+        }
+        
+        // Renderizar propiedades
+        propiedades.forEach(prop => {
+          propsContainer.innerHTML += `
+            <div class="card">
+              <h3>${prop.titulo}</h3>
+              <p><strong>$${prop.precio.toLocaleString()}</strong></p>
+              <p>${prop.tipo.toUpperCase()}</p>
+              <a href="/properties/detail.html?id=${prop.id}">Ver detalles</a>
+            </div>
+          `;
+        });
+        
+      } catch (err) {
+        console.error('Error:', err);
+        propsContainer.innerHTML = `<p class="error">Error al cargar propiedades: ${err.message}</p>`;
+      }
+    }
+      async function loadProperties(type = '', priceRange = '') {
+    const propsContainer = document.getElementById('props');
+    propsContainer.innerHTML = '<p class="loading">Cargando propiedades...</p>';
+    
+    try {
+      const params = new URLSearchParams();
+      if (type) params.append('type', type);
+      
+      if (priceRange) {
+        const [min, max] = priceRange.split('-');
+        if (min) params.append('minPrice', min);
+        if (max) params.append('maxPrice', max);
+      }
+      
+      const propiedades = await request(`/propiedades?${params.toString()}`);
+      
+      propsContainer.innerHTML = '';
+      if (propiedades.length === 0) {
+        propsContainer.innerHTML = '<p class="no-results">No se encontraron propiedades</p>';
+        return;
+      }
+      
+      // Renderizar propiedades con validación
+      propiedades.forEach(prop => {
+        const tipo = prop.tipo ? prop.tipo.toUpperCase() : 'SIN TIPO';
+        const precio = prop.precio ? `$${prop.precio.toLocaleString()}` : 'CONSULTAR';
+        
+        propsContainer.innerHTML += `
+          <div class="card">
+            <h3>${prop.titulo || 'Propiedad sin título'}</h3>
+            <p><strong>${precio}</strong></p>
+            <p>${tipo}</p>
+            <a href="/properties/detail.html?id=${prop.id}">Ver detalles</a>
+          </div>
+        `;
+      });
+      
+    } catch (err) {
+      console.error('Error:', err);
+      propsContainer.innerHTML = `<p class="error">Error al cargar propiedades: ${err.message}</p>`;
+    }
+  }
+
+    // Event listeners para los filtros
+    document.getElementById('type-filter').addEventListener('change', (e) => {
+      const priceFilter = document.getElementById('price-filter').value;
+      loadProperties(e.target.value, priceFilter);
+    });
+
+    document.getElementById('price-filter').addEventListener('change', (e) => {
+      const typeFilter = document.getElementById('type-filter').value;
+      loadProperties(typeFilter, e.target.value);
+    });
+
+    // Carga inicial
+    loadProperties();
+  </script>
+</body>
+</html>

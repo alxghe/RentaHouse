@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro | RentaHouse</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main class="form-container">
+    <h2>Registro de usuario</h2>
+    <form id="form-register">
+      <label>Nombre <input name="nombre" required></label>
+      <label>Email <input name="email" type="email" required></label>
+      <label>Contraseña <input name="password" type="password" required></label>
+      <label>Teléfono <input name="telefono"></label>
+      <label>Rol
+        <select name="rol">
+          <option value="arrendador">Arrendador</option>
+          <option value="inquilino">Inquilino</option>
+        </select>
+      </label>
+      <button>Registrarse</button>
+    </form>
+  </main>
+
+  <script src="../scripts/utils.js"></script>
+  <script src="../scripts/auth.js"></script>
+  <script>
+    loadPartial('navbar-container', '../partials/navbar.html');
+    
+    // Registro
+    document.getElementById('form-register').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      try {
+        await request('/users/register', 'POST', {
+          nombre: form.nombre.value,
+          email: form.email.value,
+          password: form.password.value,
+          telefono: form.telefono.value,
+          rol: form.rol.value
+        });
+        alert('Registro exitoso. Ahora puedes iniciar sesión.');
+        window.location.href = 'login.html';
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reseñas | RentaHouse</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main>
+    <div class="form-container">
+      <h2>Dejar reseña</h2>
+      <form id="form-review">
+        <label>ID Propiedad <input name="propiedad_id" required></label>
+        <label>Comentario <textarea name="comentario" required></textarea></label>
+        <label>Puntuación (1-5) <input name="puntuacion" type="number" min="1" max="5" required></label>
+        <button>Enviar reseña</button>
+      </form>
+    </div>
+
+    <div id="reviews-container" class="grid-container"></div>
+  </main>
+
+  <script src="../scripts/utils.js"></script>
+  <script src="../scripts/reviews.js"></script>
+  <script>
+    loadPartial('navbar-container', '../partials/navbar.html');
+    
+    // Cargar reseñas existentes
+    async function loadReviews() {
+      const reviews = await request('/resenas');
+      const container = document.getElementById('reviews-container');
+      
+      reviews.forEach(review => {
+        container.innerHTML += `
+          <div class="card">
+            <p>⭐ ${'★'.repeat(review.calificacion)}</p>
+            <p>${review.comentario}</p>
+            <small>${new Date(review.fecha).toLocaleDateString()}</small>
+          </div>
+        `;
+      });
+    }
+
+    // Enviar nueva reseña
+    document.getElementById('form-review').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      await request('/resenas', 'POST', {
+        propiedad_id: form.propiedad_id.value,
+        comentario: form.comentario.value,
+        calificacion: parseInt(form.puntuacion.value)
+      });
+      alert('Reseña publicada!');
+      form.reset();
+      loadReviews();
+    });
+
+    loadReviews();
+  </script>
+</body>
+</html>

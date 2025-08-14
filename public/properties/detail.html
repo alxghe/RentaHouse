@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detalle de propiedad | RentaHouse</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    /* Estilos base */
+    .error-container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .error-container h2 {
+      color: #d32f2f;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      font-size: 1.2rem;
+    }
+    
+    /* Estilos para reseñas */
+    .review-card {
+      background: #fff;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .review-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+    
+    .review-rating {
+      color: #FFD700;
+      font-size: 1.2rem;
+      margin: 0.5rem 0;
+    }
+    
+    .review-comment {
+      margin: 1rem 0;
+      line-height: 1.5;
+    }
+    
+    .delete-review {
+      background: #ffebee;
+      color: #c62828;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+    
+    .no-reviews {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+    }
+    
+    /* Formulario de reseñas */
+    .review-form {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+    
+    .review-form textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    .review-form select {
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    /* Notificaciones */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 5px;
+      color: white;
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    .notification.success {
+      background-color: #4CAF50;
+    }
+    
+    .notification.error {
+      background-color: #F44336;
+    }
+    
+    .notification.info {
+      background-color: #2196F3;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main class="property-detail">
+    <div id="loading-message" class="loading">Cargando propiedad...</div>
+    <div id="property-content" style="display: none;">
+      <!-- Contenido se llenará dinámicamente -->
+    </div>
+  </main>
+
+  <script src="../scripts/utils.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Variable global para el usuario actual
+    let currentUser = null;
+    
+    loadPartial('navbar-container', '../partials/navbar.html');
+    
+    const loadingMessage = document.getElementById('loading-message');
+    const propertyContent = document.getElementById('property-content');
+    
+    function showError(message, details = '') {
+      propertyContent.style.display = 'block';
+      propertyContent.innerHTML = `
+        <div class="error-container">
+          <h2>${message}</h2>
+          ${details ? `<p>${details}</p>` : ''}
+          <a href="list.html" class="button">Volver al listado</a>
+        </div>
+      `;
+      loadingMessage.style.display = 'none';
+    }
+    
+    // Cargar usuario actual
+    async function loadCurrentUser() {
+      try {
+        currentUser = await request('/users/me');
+      } catch (error) {
+        console.log('Usuario no autenticado', error);
+        currentUser = null;
+      }
+    }
+    
+    async function loadProperty() {
+      try {
+        await loadCurrentUser(); // Cargar usuario primero
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const propertyId = urlParams.get('id');
+        
+        if (!propertyId) {
+          throw new Error('No se proporcionó ID de propiedad');
+        }
+        
+        const property = await request(`/propiedades/${propertyId}`);
+        
+        if (!property || !property.id) {
+          throw new Error('Propiedad no encontrada en la respuesta');
+        }
+        
+        displayProperty(property);
+        loadReviews(propertyId);
+        
+        if (property.lat && property.lng) {
+          initMap(property.lat, property.lng);
+        }
+        
+        loadingMessage.style.display = 'none';
+        propertyContent.style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error al cargar propiedad:', error);
+        showError(
+          'No se pudo cargar la propiedad',
+          error.message || 'Verifica la URL o intenta más tarde'
+        );
+      }
+    }
+    
+    function displayProperty(property) {
+      propertyContent.innerHTML = `
+        <div class="image-gallery" id="property-images"></div>
+        
+        <div class="property-info">
+          <h1 id="property-title">${property.titulo || 'Propiedad sin título'}</h1>
+          <p class="price" id="property-price">$${property.precio?.toLocaleString() || 'Consultar'}</p>
+          <p class="location" id="property-location">
+            ${[property.direccion, property.ciudad].filter(Boolean).join(', ')}
+          </p>
+          
+          ${property.lat && property.lng ? 
+            `<div class="property-map" id="map"></div>` : ''}
+          
+          <div class="property-description">
+            <h3>Descripción</h3>
+            <p id="property-description">${property.descripcion || 'No hay descripción disponible'}</p>
+          </div>
+          
+          <div class="property-actions">
+            <button id="btn-favorite">❤️ Añadir a favoritos</button>
+            // Versión modificada que incluye user_id y property_id
+            <a href="../messages/list.html?user_id=${property.usuario_id}&property_id=${property.id}" id="btn-contact" class="button">Contactar</a>
+          </div>
+        </div>
+        
+        <div class="property-reviews">
+          <h2>Reseñas</h2>
+          <div id="reviews-list"></div>
+          
+          <!-- Formulario para añadir reseñas -->
+          ${currentUser ? `
+            <div class="review-form">
+              <h3>Deja tu reseña</h3>
+              <form id="review-form" data-property-id="${property.id}">
+                <textarea name="comentario" placeholder="Escribe tu reseña..." required></textarea>
+                <select name="calificacion" required>
+                  <option value="">Selecciona una calificación</option>
+                  <option value="5">★★★★★ Excelente</option>
+                  <option value="4">★★★★☆ Muy bueno</option>
+                  <option value="3">★★★☆☆ Bueno</option>
+                  <option value="2">★★☆☆☆ Regular</option>
+                  <option value="1">★☆☆☆☆ Malo</option>
+                </select>
+                <button type="submit">Enviar reseña</button>
+              </form>
+            </div>
+          ` : '<p>Inicia sesión para dejar una reseña</p>'}
+        </div>
+      `;
+      
+      const gallery = document.getElementById('property-images');
+      if (property.imagenes && property.imagenes.length > 0) {
+        property.imagenes.forEach(img => {
+          gallery.innerHTML += `<img src="${BASE_URL}${img.url}" alt="${property.titulo}">`;
+        });
+      } else {
+        gallery.innerHTML = '<p>No hay imágenes disponibles</p>';
+      }
+      
+      document.getElementById('btn-favorite')?.addEventListener('click', () => {
+        addToFavorites(property.id);
+      });
+      
+      setupReviewForm();
+    }
+    
+    function initMap(lat, lng) {
+      const map = L.map('map').setView([lat, lng], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      L.marker([lat, lng]).addTo(map);
+    }
+    
+    async function loadReviews(propertyId) {
+      const container = document.getElementById('reviews-list');
+      container.innerHTML = '<p class="loading">Cargando reseñas...</p>';
+
+      try {
+        const resenas = await request(`/resenas/propiedad/${propertyId}`);
+        
+        if (!resenas || resenas.length === 0) {
+          container.innerHTML = '<p class="no-reviews">No hay reseñas aún. ¡Sé el primero en opinar!</p>';
+          return;
+        }
+
+        container.innerHTML = '';
+        
+        resenas.forEach(review => {
+          const reviewElement = document.createElement('div');
+          reviewElement.className = 'review-card';
+          
+          const userName = review.usuario_nombre || 'Usuario anónimo';
+          const rating = typeof review.calificacion === 'number' 
+            ? '★'.repeat(Math.min(5, Math.max(1, review.calificacion))) 
+            : 'Sin calificar';
+          const comment = review.comentario || 'Sin comentario';
+          const reviewDate = review.fecha_resena 
+            ? new Date(review.fecha_resena).toLocaleDateString('es-MX') 
+            : 'Fecha desconocida';
+
+          reviewElement.innerHTML = `
+            <div class="review-header">
+              <span class="review-author">${userName}</span>
+              <span class="review-date">${reviewDate}</span>
+            </div>
+            <div class="review-rating">${rating}</div>
+            <p class="review-comment">${comment}</p>
+            
+            ${currentUser && review.usuario_id === currentUser.id ? `
+              <button class="delete-review" data-review-id="${review.id}">
+                Eliminar mi reseña
+              </button>
+            ` : ''}
+          `;
+          
+          container.appendChild(reviewElement);
+        });
+
+        document.querySelectorAll('.delete-review').forEach(button => {
+          button.addEventListener('click', async (e) => {
+            if (confirm('¿Estás seguro de eliminar esta reseña?')) {
+              try {
+                await request(`/resenas/${e.target.dataset.reviewId}`, 'DELETE');
+                loadReviews(propertyId);
+              } catch (error) {
+                showNotification('Error al eliminar reseña: ' + error.message, 'error');
+              }
+            }
+          });
+        });
+
+      } catch (error) {
+        console.error('Error al cargar reseñas:', error);
+        container.innerHTML = `
+          <p class="error">
+            Error al cargar reseñas: ${error.message || 'Intenta recargando la página'}
+          </p>
+        `;
+      }
+    }
+    
+    function setupReviewForm() {
+      const form = document.getElementById('review-form');
+      if (!form) return;
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+
+        try {
+          await request('/resenas', 'POST', {
+            propiedad_id: form.dataset.propertyId,
+            comentario: form.comentario.value,
+            calificacion: parseInt(form.calificacion.value)
+          });
+          
+          form.reset();
+          loadReviews(form.dataset.propertyId);
+          showNotification('¡Reseña publicada con éxito!', 'success');
+        } catch (error) {
+          showNotification('Error al publicar reseña: ' + (error.message || 'Intenta más tarde'), 'error');
+          console.error('Error:', error);
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    }
+    
+    async function addToFavorites(propertyId) {
+      try {
+        if (!currentUser) {
+          throw new Error('Debes iniciar sesión para añadir favoritos');
+        }
+
+        const { exists } = await request(`/favoritos/check?usuario_id=${currentUser.id}&propiedad_id=${propertyId}`);
+        if (exists) {
+          showNotification('Esta propiedad ya está en tus favoritos', 'info');
+          return;
+        }
+
+        await request('/favoritos', 'POST', {
+          usuario_id: currentUser.id,
+          propiedad_id: propertyId
+        });
+
+        showNotification('¡Añadido a favoritos correctamente!', 'success');
+        document.getElementById('btn-favorite').textContent = '❤️ En favoritos';
+        document.getElementById('btn-favorite').disabled = true;
+        
+      } catch (error) {
+        console.error('Error al añadir favorito:', error);
+        showNotification(error.message || 'Error al añadir a favoritos', 'error');
+      }
+    }
+
+    function showNotification(message, type = 'success') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => notification.remove(), 3000);
+    }
+    
+    loadProperty();
+  </script>
+</body>
+</html>

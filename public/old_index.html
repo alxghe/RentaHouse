@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>RentaHouse – Demo</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 1rem; background: #f5f6fa }
+    h2 { margin-top: 2rem }
+    form { margin-bottom: 1.5rem; padding: 1rem; background: #fff; border-radius: 6px; box-shadow: 0 0 4px rgba(0,0,0,.05) }
+    label { display: block; margin: .5rem 0 .25rem }
+    input, textarea, select { width: 100%; padding: .4rem; border: 1px solid #ccc; border-radius: 4px }
+    button { margin-top: .7rem; padding: .5rem 1rem; border: 0; border-radius: 4px; background: #0066ff; color: #fff; cursor: pointer }
+    #props { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem }
+    .card { background: #fff; padding: 1rem; border-radius: 6px; box-shadow: 0 0 4px rgba(0,0,0,.05) }
+    .hidden { display: none }
+    #preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px }
+    .preview-item { position: relative; width: 100px; height: 100px }
+    .preview-img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px }
+    .remove-img { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px }
+    .file-input-container { position: relative; overflow: hidden }
+    .file-input-label { display: block; padding: 8px 12px; background: #0066ff; color: white; border-radius: 4px; text-align: center; cursor: pointer }
+    .file-input-label:hover { background: #0052cc }
+    .file-input { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer }
+
+      #map {
+    height: 300px;
+    margin-top: 10px;
+    border-radius: 6px;
+    box-shadow: 0 0 4px rgba(0,0,0,.1);
+  }
+  </style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+</head>
+<body>
+  <h1>RentaHouse – Sandbox</h1>
+
+  <!-- Registro -->
+  <h2>Registro</h2>
+  <form id="form-register">
+    <label>Nombre <input name="nombre" required></label>
+    <label>Apellido <input name="apellido" required></label>
+    <label>Email <input name="email" type="email" required></label>
+    <label>Contraseña <input name="password" type="password" required></label>
+    <label>Teléfono <input name="telefono"></label>
+    <label>Rol
+      <select name="rol">
+        <option value="arrendador">Arrendador</option>
+        <option value="inquilino">Inquilino</option>
+      </select>
+    </label>
+    <button>Registrarse</button>
+  </form>
+
+  <!-- Login -->
+  <h2>Login</h2>
+  <form id="form-login">
+    <label>Email <input name="email" type="email" required></label>
+    <label>Contraseña <input name="password" type="password" required></label>
+    <button>Iniciar sesión</button>
+  </form>
+  <p id="tokenInfo" class="hidden"></p>
+  <button id="btn-logout" class="hidden">Cerrar sesión</button>
+
+  <!-- Publicar propiedad -->
+  <h2>Publicar propiedad</h2>
+  <form id="form-prop" enctype="multipart/form-data">
+    <label>Título <input name="titulo" required></label>
+    <label>Descripción <textarea name="descripcion"></textarea></label>
+    <label>Dirección <input name="direccion"></label>
+    <label>Ciudad <input name="ciudad"></label>
+    <label>Precio (MXN) <input name="precio" type="number" step="0.01"></label>
+    <label>Tipo
+      <select name="tipo">
+        <option value="cuarto">Cuarto</option>
+        <option value="departamento">Departamento</option>
+        <option value="casa">Casa</option>
+      </select>
+    </label>
+    <label>Servicios <textarea name="servicios"></textarea></label>
+
+    <!-- Ubicación en el mapa -->
+    <label>Ubicación en el mapa:</label>
+    <div id="map"></div>
+    <input type="hidden" name="lat" id="lat">
+    <input type="hidden" name="lng" id="lng">
+    <small>Haz clic en el mapa o mueve el marcador para seleccionar la ubicación</small>
+
+  <!-- Imágenes -->
+  <label>Imágenes de la propiedad</label>
+  <div class="file-input-container">
+    <label class="file-input-label">Seleccionar imágenes (máx. 5)</label>
+    <input type="file" class="file-input" name="imagenes" accept="image/*" multiple required>
+  </div>
+  <small>Puedes seleccionar varias imágenes a la vez</small>
+  <div id="preview-container"></div>
+
+  <button type="submit">Publicar</button>
+</form>
+
+  <!-- Listado -->
+  <h2>Propiedades disponibles</h2>
+  <div id="props"></div>
+
+  <!-- Favoritos -->
+  <h2>Favoritos</h2>
+  <form id="form-fav">
+    <label>ID de la propiedad <input name="propiedad_id" required></label>
+    <button type="submit">Añadir a favoritos</button>
+  </form>
+  <button id="btn-ver-favs">Ver mis favoritos</button>
+  <ul id="lista-favs"></ul>
+
+  <!-- Reseñas -->
+  <h2>Reseñas</h2>
+  <form id="form-resena">
+    <label>ID de la propiedad <input name="propiedad_id" required></label>
+    <label>Comentario <textarea name="comentario" required></textarea></label>
+    <label>Puntuación <input name="puntuacion" type="number" min="1" max="5" required></label>
+    <button type="submit">Publicar reseña</button>
+  </form>
+  <div id="lista-resenas"></div>
+
+  <!-- Mensajes -->
+  <h2>Mensajes</h2>
+  <form id="form-mensaje">
+    <label>ID destinatario <input name="destinatario_id" required></label>
+    <label>Mensaje <textarea name="contenido" required></textarea></label>
+    <button type="submit">Enviar mensaje</button>
+  </form>
+  <div id="lista-mensajes"></div>
+
+  
+
+
+  <!-- Aquí va todo tu HTML -->
+<script src="script.js"></script>
+  <script>
+ // Script para vista previa de imágenes
+    document.querySelector('.file-input').addEventListener('change', function(e) {
+      const previewContainer = document.getElementById('preview-container');
+      previewContainer.innerHTML = '';
+      
+      if (this.files.length > 5) {
+        alert('Máximo 5 imágenes permitidas');
+        this.value = '';
+        return;
+      }
+      
+      Array.from(this.files).forEach((file, index) => {
+        if (!file.type.match('image.*')) {
+          return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const previewItem = document.createElement('div');
+          previewItem.className = 'preview-item';
+          
+          const img = document.createElement('img');
+          img.src = event.target.result;
+          img.className = 'preview-img';
+          
+          const removeBtn = document.createElement('span');
+          removeBtn.className = 'remove-img';
+          removeBtn.innerHTML = '×';
+          removeBtn.onclick = () => {
+            previewItem.remove();
+            // Opcional: Actualizar el input de archivos
+          };
+          
+          previewItem.appendChild(img);
+          previewItem.appendChild(removeBtn);
+          previewContainer.appendChild(previewItem);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+
+  </script>
+
+</body>
+</html>
